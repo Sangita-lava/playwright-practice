@@ -1,36 +1,50 @@
-// admin.create.spec.js
+
 const { test, expect } = require('@playwright/test');
+const { LoginPage } = require('../pages/loginPage');
 const { AdminPage } = require('../pages/admin-userPage');
-const{LoginPage} =require('../pages/loginPage');
-import { readExcel } from '../helpers/excelReader.js';
+const { readExcel } = require('../helpers/excelReader');
 
 let testData = [];
-test.beforeAll(async () => {
-    testData = await readExcel('./data/testData.xlsx', 'Sheet1');
-  });
 
+test('Login and Create Admin User - OrangeHRM', async ({ page }) => {
+  testData = await readExcel('./data/testData.xlsx', 'Sheet1');
 
-test('Create Admin User', async ({ page }) => {
-    const adminPage = new AdminPage(page);
-const loginPage = new LoginPage(page);
+  for (const data of testData) {
+    await test.step(`Login and create user with username: ${data.username}`, async () => {
+      const loginPage = new LoginPage(page);
+      const adminPage = new AdminPage(page);
+
+      // Step 1: Login
       await page.goto('/web/index.php/auth/login');
-      await loginPage.login(testData.username, testData.password);
+      await loginPage.login(data.username, data.password);
 
-      // Optional: Check login success by URL or some element
-      await expect(page).toHaveURL(/dashboard|pim|admin/);
-await page.goto('web/index.php/admin/viewSystemUsers');
+      // Step 2: Wait for dashboard after login
+      await page.waitForURL('**/dashboard/index', { timeout: 10000 });
+      await expect(page).toHaveURL(/.*dashboard\/index/);
 
-    // Wait for dashboard heading (or another reliable element)
-await page.waitForSelector('.oxd-text.oxd-text--h6.oxd-topbar-header-breadcrumb-module');
+      // Step 3: Click Admin menu in sidebar
+      await adminPage.clickAdminMenu();
+      await expect(page).toHaveURL(/.*viewSystemUsers/);
 
-    await adminPage.navigateToAdmin();
-    await adminPage.clickAddButton();
-    await adminPage.fillUserDetails({
-        username: 'testuser1',
+      // Step 4: Click Add to open user creation page
+      await adminPage.clickAddButton();
+      await page.waitForURL('**/admin/saveSystemUser');
+      await expect(page).toHaveURL(/.*saveSystemUser/);
+
+      // Step 5: Fill and Save new user
+      await adminPage.fillUserDetails({
+        role: 'Admin',
+        status: 'Enabled',
+        employeeName: 'Sania Shaheen',
+        username: `user_${Date.now()}`,
         password: 'Pass1234@',
-        confirmPassword: 'Pass1234@',
-    });
-    await adminPage.saveUser();
+        confirmPassword: 'Pass1234@'
+      });
 
-    await expect(page.locator('text=testuser1')).toBeVisible();
+      await adminPage.saveUser();
+
+      // Step 6: Assert success (update as per actual success message or table record)
+      await expect(page.locator('text=Successfully Saved')).toBeVisible();
+    });
+  }
 });

@@ -11,7 +11,7 @@ module.exports = defineConfig({
   testDir: 'tests',
   
   // ✅ Add this reporter section:
-  reporter: [['html', { open: 'always' },["allure-playwright"]]], // or 'always' if you prefer
+  reporter: [['html', { open: 'always' }]], // or 'always' if you prefer
    // Save login session to file
    globalSetup: require.resolve('./hooks/globalHooks.js')
   
